@@ -46,57 +46,143 @@ print_r($output);
 //preg_match('@^(?:http://)?([^/]+)@i', "http://www.php.net/index.html", $matches); // www.php.net
 //$host = $matches[1];
 
-
 //$parent_scanned_directory = array_diff(scandir('libs'), array('..', '.')); //$directory = 'libs';
 // break;
-foreach(array_diff(scandir('libs'), array('..', '.')) as $parent_directory) {
-  //echo 'Hello world';
-  if (!is_dir('libs' . '/' . $parent_directory)) continue;
-  echo '<b>Parent Directory: </b>' . $parent_directory . '<br />';
-  $child_scanned_directory = array_diff(scandir('libs/' . $parent_directory), array('..', '.')); //$directory = 'libs';
-  $version_directory = end($child_scanned_directory);
-  print '&nbsp;&nbsp;Child Directory: ' . $version_directory . '<br />';
+
+/*
+    $path_comp = array(
+        0 => $version_directory  // current_version
+        1 => $parent_directory
+        2 => $csv_file
+        3 => $row[0]  // project/software name
+        4 => array( // $url = parse_url($row[1]);   // parse url
+            "scheme" => 'https'
+            "host" => 'www...com'
+            "path" => '/...'
+        )
+        5 => array ( // explode("/", trim(parse_url($path_comp[4], PHP_URL_PATH), "/"));  // parse url path
+                0 => '...'
+                ...
+                (last) -> '...' //path'
+        )
+        6 => $new_version // current_version + 1
+        7 => GET URL
+    )
+*/
+
+$directory = 'libs';
+
+//die(var_dump($path_comps));
+
+foreach(array_diff(scandir($directory), array('..', '.')) as $parent_directory) {
+
+    $path_comps = array_fill_keys(array(0, 1, 2, 3, 4, 5, 6, 7), ''); 
+
+    $path_comps[4] = array_fill_keys(array('scheme', 'host', 'path'), ''); 
+
+    //echo 'Hello world';
+    if (!is_dir($directory . '/' . $parent_directory)) continue;
+    $path_comps[1] = $parent_directory;
+    echo '<b>Parent Directory: </b>' . $path_comps[1] . '<br />';
+    $child_directory = array_diff(scandir($directory . '/' . $path_comps[1]), array('..', '.')); //;
+    $path_comps[0] = end($child_directory); // Last Sub-directory
+    print '&nbsp;&nbsp;Child Directory: ' . $path_comps[0] . '<br />';
   
-  if(!empty($csv_files = glob('libs/' . $parent_directory . '/' . $version_directory . '/' . '*.csv'))) {
+    if (!empty($csv_files = glob($directory . '/' . $path_comps[1] . '/' . $path_comps[0] . '/' . '*.csv'))) {
   
-    $csv_file = end($csv_files);
-    
-    //explode("/", trim(end($csv_files), "/"));
-    //$csv_file = implode( '/', $csv_file ); //end($csv_file);
-  
-    print '&nbsp;&nbsp;&nbsp;&nbsp;CSV File: ' . $csv_file . '<br />';
-    
-    $fileHandle = fopen($csv_file, "r");
- 
-    //Loop through the CSV rows.
-    while (($row = fgetcsv($fileHandle, 0, ",")) !== FALSE) {
-        //Print out my column data.
-        echo '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Name: ' . $row[0] . '<br>';
-        echo '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;URL: ' . $row[1] . '<br>';
-        $path = parse_url($row[1], PHP_URL_PATH);
-        $url = parse_url($row[1]);
-        break;
+        $path_comps[2] = end($csv_files); // Last CSV File
+
+        //explode("/", trim(end($csv_files), "/"));
+        //$csv_file = implode( '/', $csv_file ); //end($csv_file);
+
+        print '&nbsp;&nbsp;&nbsp;&nbsp;CSV File: ' . $path_comps[2] . '<br />';
+
+        $fileHandle = fopen($path_comps[2], "r");
+         //Loop through the CSV rows.
+        while (($row = fgetcsv($fileHandle, 0, ",")) !== FALSE) {
+            //Print out my column data.
+            echo '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Name: ' .$row[0] . '<br>';
+            echo '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;URL: ' . $row[1] . '<br>';
+            $path_comps[3] = $row[0];
+            $path_comps[4] = parse_url($row[1]); // $url
+            //$path_comps[4]['path'] = parse_url($row[1], PHP_URL_PATH); // string
+            $path_comps[5] = explode("/", trim($path_comps[4]['path'], "/")); // explode
+            break;
+        }
+        fclose($fileHandle);
+
+    } else {
+        print '&nbsp;&nbsp;&nbsp;&nbsp;CSV File: <b>&lt;empty&gt;</b> <br />';
+        continue;
     }
 
-    fclose($fileHandle);   
-    
-    $pathComponents = explode("/", trim($path, "/")); // trim to prevent
-    echo '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Path: ' . implode('/', $pathComponents) . "<br />";    
-    $pathComponents2 = $url; //explode("/", trim($url, "/")); // trim to prevent
-    $new_url = $pathComponents2['scheme'] . '://' . $pathComponents2['host'] . '/';
+    //$pathComponents = explode("/", trim($path_comps[4], "/")); // trim to prevent
+    echo '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Path: ' . (is_array($path_comps[5]) ? implode('/', $path_comps[5]) : false) . "<br />";    
+    //$pathComponents2 = $path_comps[4]; //explode("/", trim($url, "/")); // trim to prevent
+
     //var_dump($pathComponents2);
     //echo '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;New URL: ' . $new_url . '<br />';
     
     echo '<pre>';
     //var_dump($pathComponents);
     //var_dump($pathComponents2);
+    //var_dump($path_comps);
     echo '</pre>';
+    //die();
+    echo '&nbsp;&nbsp;&nbsp;&nbsp;Version: ' . $path_comps[0] . '<br />'; // $path_comps[4]['path'][count($path_comps[4]['path'])-1]; count == 2 - 1
 
-    if ($pathComponents2['host'] == 'www.nuget.org') {  // https://www.nuget.org/api/v2/package/TinyMCE/4.9.10 -> globalcdn.nuget.org
 
-      print '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Version: ' . $pathComponents[count($pathComponents)-1] . '<br />'; //prev($array);
+    if ($path_comps[4]['host'] == 'pear.horde.org') {
 
-      preg_match('/\d+\.\d+\.\d+/', $pathComponents[count($pathComponents)-1], $output);
+        preg_match('/\d+\.\d+\.\d+/', $path_comps[0], $output);
+      
+        $version = $output[0];
+
+        for ( $new_version = explode( ".", $version ), $i = count( $new_version ) - 1; $i > -1; --$i ) {
+            if ( ++$new_version[ $i ] > -1 || !$i ) break; // break execution of the whole for-loop if the incremented number is below 10 or !$i (which means $i == 0, which means we are on the number before the first period)
+            $new_version[ $i ] = 0; // otherwise set to 0 and start validation again with next number on the next "for-loop-run"
+        }
+    
+        $path_comps[6] = implode( ".", $new_version );
+        
+        echo '&nbsp;&nbsp;&nbsp;&nbsp;Checking for New Version: ' . $path_comps[6] . '<br />';
+
+        $path_comps[7] = $path_comps[4]['scheme'] . '://' . $path_comps[4]['host'] . '/' . join('/', array_filter(
+            array_merge(
+                array(
+                    join('', array_slice($path_comps[5], 0, -1))
+                )
+            ), 'strlen')
+        ) . '/';
+
+        $path_comps[7] .= $path_comps[3] . '-' . $path_comps[6] . '.tgz' . (isset($path_comps[4]['query']) ? '?' . $path_comps[4]['query'] : '');
+        
+        echo '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;New URL: ' . $path_comps[7] . '<br />';
+
+    } else if ($path_comps[4]['host'] == 'download.ccleaner.com') {  // https://download.ccleaner.com/ccsetup570.exe -> globalcdn.nuget.org
+
+        preg_match('/(\d+)/', $path_comps[0], $output);
+
+        $version = $output[0];
+
+        $path_comps[6] = $version + 1;
+        echo '&nbsp;&nbsp;&nbsp;&nbsp;Checking for New Version: ' . $path_comps[6] . '<br />';
+
+        $path_comps[7] = $path_comps[4]['scheme'] . '://' . $path_comps[4]['host'] . '/' . join('/', array_filter(
+            array_merge(
+                array(
+                    join('', array_slice($path_comps[5], 0, -1))
+                )
+            ), 'strlen')
+        );
+
+        $path_comps[7] .= $path_comps[3] . $path_comps[6] . '.exe' . (isset($path_comps[4]['query']) ? '?' . $path_comps[4]['query'] : '');
+
+        echo '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;New URL: ' . $path_comps[7] . '<br />';
+
+    } elseif ($path_comps[4]['host'] == 'www.nuget.org') {  // https://www.nuget.org/api/v2/package/TinyMCE/4.9.10 -> globalcdn.nuget.org
+
+        preg_match('/\d+\.\d+\.\d+/', $path_comps[0], $output);
       
         $version = $output[0];
 
@@ -105,49 +191,16 @@ foreach(array_diff(scandir('libs'), array('..', '.')) as $parent_directory) {
             $new_version[ $i ] = 0; // otherwise set to 0 and start validation again with next number on the next "for-loop-run"
         }
 
-        $new_version = implode( ".", $new_version );
-        echo '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Check for New Version: ' . $new_version . '<br />';
-        
-        $pathComponents[count($pathComponents)-1] = $new_version;
-        
-        //$new_url .= implode('/', $pathComponents) . (isset($pathComponents2['query']) ? '?' . $pathComponents2['query'] : '');
- 
-        $new_url = 'https://globalcdn.nuget.org/packages/' . strtolower($pathComponents[3]) . '.' . $pathComponents[4] . '.nupkg';
-        
-        echo '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;New URL: ' . $new_url . '<br />';
-        
-        //die();
+        $path_comps[6] = implode( ".", $new_version );
+        echo '&nbsp;&nbsp;&nbsp;&nbsp;Checking for New Version: ' . $path_comps[6] . '<br />';
 
-        $handle = curl_init($new_url); //'https://globalcdn.nuget.org/packages/tinymce.4.9.12.nupkg'
-        curl_setopt($handle,  CURLOPT_RETURNTRANSFER, TRUE);
+        $path_comps[7] = 'https://globalcdn.nuget.org/packages/' . strtolower($path_comps[3]) . '.' . $path_comps[6] . '.nupkg';
 
-        /* Get the HTML or whatever is linked in $new_url. */
-        $response = curl_exec($handle);
+        echo '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;New URL: ' . $path_comps[7] . '<br />';
 
-        /* Check for 404 (file not found). */
-        $httpCode = curl_getinfo($handle, CURLINFO_HTTP_CODE);
-        if($httpCode == 404) {
-            /* Handle 404 here. */
-            echo '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>File does not exist. 404</b><br />';
-        } else {
-            echo '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>File does exist.</b><br />';
-            
-            mkdir('libs'.'/'.$pathComponents[3].'/'.$pathComponents[4].'/');
-            
-            touch('libs'.'/'.$pathComponents[3].'/'.$pathComponents[4].'/'.$pathComponents[3] . '.csv');
-            
-            $file = fopen('libs'.'/'.$pathComponents[3].'/'.$pathComponents[4].'/'.$pathComponents[3] . '.csv',"w");
-            fwrite($file,$pathComponents[3] . ',' . $pathComponents2['scheme'] . '://' . $pathComponents2['host'] . '/' . implode('/', $pathComponents) . (isset($pathComponents2['query']) ? '?' . $pathComponents2['query'] : ''));
-            fclose($file);
-            
-            echo '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;File was created: <b>' . $pathComponents[3].'/'.$pathComponents[4].'/'.$pathComponents[3] . '.csv' . '</b><br />';
-        }
-      
-    } else if ($pathComponents2['host'] == 'cdnjs.cloudflare.com') {
+    } elseif ($path_comps[4]['host'] == 'cdnjs.cloudflare.com') {
 
-      print '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Version: ' . $pathComponents[count($pathComponents)-2] . '<br />'; //prev($array);
-
-      preg_match('/\d+\.\d+\.\d+/', $pathComponents[count($pathComponents)-2], $output);
+        preg_match('/\d+\.\d+\.\d+/', $path_comps[0], $output);
       
         $version = $output[0];
 
@@ -156,49 +209,48 @@ foreach(array_diff(scandir('libs'), array('..', '.')) as $parent_directory) {
             $new_version[ $i ] = 0; // otherwise set to 0 and start validation again with next number on the next "for-loop-run"
         }
 
-        $new_version = implode( ".", $new_version );
-        echo '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Check for New Version: ' . $new_version . '<br />';
-        
-        $pathComponents[count($pathComponents)-2] = $new_version;
-        
-        $new_url .= implode('/', $pathComponents) . (isset($pathComponents2['query']) ? '?' . $pathComponents2['query'] : '');
-        
-        echo '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;New URL: ' . $new_url . '<br />';
+        $path_comps[6] = implode( ".", $new_version );
+        echo '&nbsp;&nbsp;&nbsp;&nbsp;Checking for New Version: ' . $path_comps[6] . '<br />';
 
-        $handle = curl_init($new_url);
-        curl_setopt($handle,  CURLOPT_RETURNTRANSFER, TRUE);
+        $path_comps[7] = $path_comps[4]['scheme'] . '://' . $path_comps[4]['host'] . '/' . join('/', array_filter(
+            array_merge(
+                array(
+                    join('/', array_slice($path_comps[5], 0, -2))
+                )
+            ), 'strlen')
+        ) . '/';
 
-        /* Get the HTML or whatever is linked in $new_url. */
-        $response = curl_exec($handle);
+        $path_comps[7] .= $path_comps[6] . '/' . $path_comps[3] . (isset($path_comps[4]['query']) ? '?' . $path_comps[4]['query'] : '');
 
-        /* Check for 404 (file not found). */
-        $httpCode = curl_getinfo($handle, CURLINFO_HTTP_CODE);
-        if($httpCode == 404) {
-            /* Handle 404 here. */
-            echo '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>File does not exist. 404</b><br />';
-        } else {
-            echo '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>File does exist.</b><br />';
-            
-            mkdir($pathComponents[1].'/'.$pathComponents[2].'/'.$pathComponents[3].'/');
-            
-            touch($pathComponents[1].'/'.$pathComponents[2].'/'.$pathComponents[3].'/'.$pathComponents[4] . '.csv');
-            
-            $file = fopen($pathComponents[1].'/'.$pathComponents[2].'/'.$pathComponents[3].'/'.$pathComponents[4] . '.csv',"w");
-            fwrite($file,$pathComponents[4] . ',' . $new_url);
-            fclose($file);
-            
-            echo '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;File was created: <b>' . $pathComponents[2].'/'.$pathComponents[3].'/'.$pathComponents[4] . '.csv' . '</b><br />';
-        }
+        echo '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;New URL: ' . $path_comps[7] . '<br />';
     }
 
-    //if ($pathComponents[count($pathComponents)-2] == $output[0]) {
-    
+    $handle = curl_init($path_comps[7]);
+    curl_setopt($handle,  CURLOPT_RETURNTRANSFER, TRUE);
 
-    //}
+    /* Get the HTML or whatever is linked in $new_url. */
+    $response = curl_exec($handle);
 
-  } else {
-    print '&nbsp;&nbsp;&nbsp;&nbsp;CSV File: <b>&lt;empty&gt;</b> <br />';
-  }
+    /* Check for 404 (file not found). */
+    $httpCode = curl_getinfo($handle, CURLINFO_HTTP_CODE);
+    if($httpCode == 404) {
+        /* Handle 404 here. */
+        echo '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>File does not exist. 404</b><br />';
+    } else {
+        echo '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>File does exist.</b><br />';
+            
+        mkdir($directory.'/'.$path_comps[1].'/'.$path_comps[6].'/');
+            
+        touch($directory.'/'.$path_comps[1].'/'.$path_comps[6].'/'.$path_comps[3] . '.csv');
+            
+        $file = fopen($directory . '/' . $path_comps[1] . '/' . $path_comps[6] . '/' . $path_comps[3] . '.csv',"w");
+        fwrite($file,$path_comps[3] . ',' . $path_comps[7]);
+        fclose($file);
+            
+        echo '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;File was created: <b>' . $directory.'/'.$path_comps[1].'/'.$path_comps[6].'/'.$path_comps[3] . '.csv' . '</b><br />';
+    }
+    //if ($pathComponents[count($pathComponents)-2] == $output[0]) { }
+
 
 }
 
