@@ -1,5 +1,7 @@
 <!--
 
+https://semver.org/ Semantic Versioning 2.0.0
+
 TODO:
     
     Parent folder ... 'libs/' 
