@@ -1,0 +1,1 @@
+ccsetup,https://download.ccleaner.com/ccsetup580.exe,/^([A-Za-z\._]+)?([\d]+)?(.exe)$/i
